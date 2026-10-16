@@ -1,230 +1,167 @@
-# 从 Entra B2B 到 Microsoft 365 跨租户日历忙闲策略
+# Microsoft 365 跨租户日历忙闲策略
 
-核查日期：2026-10-13。上一篇：[传统 Exchange 组织共享](01-exchange-federation.md)。下一篇：[21V raw HTTP 配置](03-21v-http-guide.md)。
+本文介绍 Microsoft 365 Cross-Tenant Access Policy（Microsoft 365 跨租户访问策略）下的 Free/Busy（忙闲信息）共享。
 
-## 1. 先认识“用户租户”和“资源租户”
+## 1. 从 Exchange 里的共享配置，走向身份与资源一起管理
 
-假设有两个公司：
+上一篇讲到，Exchange 2007 的 Availability Service 开始按需查询忙闲，Exchange 2010 的 Federation 又帮助独立组织验证跨组织请求。邮箱搬到云端后，OrgRel 与 AAS 继续承担组织间共享的工作。
 
-| 对象 | A：Contoso 中国 | B：Fabrikam |
-| --- | --- | --- |
-| 租户 | 21V Microsoft 365 租户 | 主例也是 21V；跨全球云另行说明 |
-| 用户 | Alice，`alice@contoso.example` | Bob，`bob@fabrikam.example` |
-| 资源 | Alice 在 A 的 Exchange Online 邮箱及日历 | Bob 在 B 的 Exchange Online 邮箱及日历 |
+随着 Microsoft 365 的协作场景增多，微软推荐通过 **Microsoft 365 Cross-Tenant Access Policy**，将日历等资源的共享授权与 Entra 的跨租户访问设置一起管理。
 
-Bob 想查看 Alice 的忙闲时，**B 是 Bob 的 home tenant（用户所属租户），A 是 resource tenant（资源所属租户）**。Alice 查看 Bob 时，两个角色交换。Inbound 和 outbound 总是相对于当前配置所在的租户而言：B 的用户走出去是 B outbound，进入 A 的边界是 A inbound。
+这次迁移也与 EWS 有关。OrgRel 和 **Sharing Policy（共享策略）** 的相关共享依赖 **Exchange Web Services（EWS）**；微软正在移除 EXO 中的 EWS 依赖，并更新高权限访问模式。EXO 租户间 AAS 的 `OrgWideFBToken` 路径独立于 EWS，虽然可以继续提供基本忙闲，但微软仍推荐迁移获得更多功能。
 
-这里的“忙闲”是安排会议所需的可用性时间信息。例如“10:00–11:00 忙”，不等于读取完整会议内容。[Entra 跨租户访问概览](https://learn.microsoft.com/en-us/entra/external-id/cross-tenant-access-overview)、[Basic 资源定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantcalendaravailabilitybasic?view=graph-rest-beta)。
+## 2. Cross-tenant、B2B 与 Cross-Tenant Access Policy
 
-## 2. 普通 Entra B2B Collaboration 解决什么问题？
+一家公司使用 Microsoft 365 时，会有自己的 **tenant（租户）**，用来管理员工账号、应用和资源。两家公司各有一个租户，员工访问对方租户中的资源，就是 **cross-tenant（跨租户）** 访问。
 
-### 2.1 一个入门例子：Bob 访问 A 的企业应用
+- **B2B Collaboration（企业间协作）** 是 Microsoft Entra ID 提供的协作方式（其中一种）：合作公司的员工可以用自己公司的账号，访问其他公司授予他的应用或资源。自己的公司继续管理账号和登录，拥有资源的公司决定给他什么权限。[B2B Collaboration 概述](https://learn.microsoft.com/en-us/entra/external-id/what-is-b2b)
 
-普通 B2B Collaboration 允许 Bob 用自己 B 租户的身份访问 A 中授予他的资源。典型过程如下：
+- **Entra Cross-Tenant Access Policy（跨租户访问策略）** 则是双方管理员制定的访问规则：本公司哪些员工可以访问外部组织，哪些外部员工可以进入本公司，允许访问哪些应用，以及是否可以跨云访问。
 
-1. A 邀请 Bob，在 A 中建立代表 Bob 的 B2B 用户对象；通常为 Guest。
-2. A 为 Bob 分配目标应用或资源权限。邀请成功本身不会授予所有资源访问权。
-3. Bob 打开应用并用 B 的账号登录；身份验证使用他的 home tenant。
-4. B 的 outbound policy 决定该身份能否访问 A；A 的 inbound policy 决定是否接受 B 的该用户及目标应用。
-5. A 仍执行适用的 Conditional Access 和应用授权。如果 A 选择信任 B 的 MFA 声明，Bob 已在 B 完成的 MFA 可以被认可；这不表示 A 取消了 MFA 要求。
-6. 全部检查通过，Bob 才能访问已授权的资源。
+- 策略分为 **Default settings（默认设置）** 和 **Organizational settings（组织设置）**：Default settings 提供通用规则，Organizational settings 为指定 **Organization（组织）** 设置专用规则，覆盖默认设置，没设置的则继承。[cross-tenant access settings](https://learn.microsoft.com/en-us/entra/external-id/cross-tenant-access-settings-b2b-collaboration)
 
-这是身份登录的逻辑模型，具体应用会有自己的会话与授权实现。[Entra 概览](https://learn.microsoft.com/en-us/entra/external-id/cross-tenant-access-overview)、[B2B Collaboration 概述](https://learn.microsoft.com/en-us/entra/external-id/what-is-b2b)。
+- 设置有访问方向：**Inbound（入站）** 控制外部用户访问本组织资源，**Outbound（出站）** 控制本组织用户访问外部资源。来源租户的 outbound 和资源租户的 inbound 规则共同决定是否允许这次跨租户访问。
 
-```mermaid
-sequenceDiagram
-    participant Bob as Bob（B 用户）
-    participant EB as B 的 Entra ID
-    participant EA as A 的 Entra ID
-    participant App as A 的企业应用
-    Bob->>App: 请求访问已分配的应用
-    App->>EA: 发起资源租户登录
-    EA->>EB: 使用 Bob 的 home identity 验证身份
-    EB-->>EA: 身份验证结果及适用声明
-    Note over EB,EA: 检查 B outbound、A inbound<br/>及 A 的 Conditional Access
-    EA-->>App: 符合条件时建立访问会话
-    App->>App: 检查 Bob 的资源权限
-    App-->>Bob: 返回获授权内容
-```
+<p align="center">
+  <img src="https://learn.microsoft.com/en-us/entra/external-id/media/cross-tenant-access-overview/cross-tenant-access-settings-overview.png" alt="Microsoft Entra 跨租户访问设置示意图：来源租户出站与资源租户入站规则" width="720" style="max-width: 100%; height: auto;">
+</p>
 
-### 2.2 三类容易混淆的设置
+这些设置大多可在 Azure Portal 访问，而在Graph API 里，由以下结构表示：
 
-| 设置 | 控制什么 | 和本次日历配置的关系 |
-| --- | --- | --- |
-| `b2bCollaborationInbound/Outbound` | 普通 B2B 用户对外部应用的访问边界；可限定用户、组、应用 | 是理解跨租户策略的基础，不能单独替代新日历授权 |
-| `b2bDirectConnectInbound/Outbound` | B2B direct connect，例如 Teams Shared Channels | 不应为启用日历忙闲而顺带放开 |
-| `inboundTrust` | 是否接受对方已完成 MFA、设备合规、hybrid joined 的声明 | 是 Conditional Access 声明信任，不是忙闲共享开关 |
-
-此外，Tenant Restrictions 管的是员工在本企业网络或设备上使用**其他租户身份**的行为；它与控制本企业账号 outbound 的设置不同。Cross-tenant synchronization 则是同步用户对象的服务，不是忙闲共享必需的同义步骤。[Cross-tenant access settings API 概览](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicy-overview?view=graph-rest-beta)。
-
-### 2.3 Default 与 Partner
-
-每个租户有默认跨租户设置，另外可以为特定组织建立 Partner 配置：
+- crossTenantAccessPolicy 作为 tenant 唯一全局策略，跨云设置存放在此
+- 然后关联 `default` 默认配置，以及用 `partners` 保存各 Organization 的配置
 
 ```text
-crossTenantAccessPolicy
-├── default                         对未明确覆盖的设置提供基线
-└── partners/{对方 Tenant ID}        指定合作组织的配置
+crossTenantAccessPolicy                    tenant 唯一的 root 策略
+├─ displayName                             root 策略显示名称
+├─ allowedCloudEndpoints                   允许协作的 Microsoft 云，如commerical, 21v
+├─ default                                 默认配置
+│  ├─ 协作设置                              各种 inbound / outbound 策略及其它设置，如 trust MFA
+│  └─ m365Capabilities                     默认开放的 M365 能力授权集合
+└─ partners                                Organization 配置集合
+   └─ {tenantId}                           某个 Organization 的配置
+      ├─ tenantId                          Organization 的 Tenant ID
+      ├─ 协作设置                           主要字段与 default 相同
+      └─ m365Capabilities                  向该组织开放的 M365 能力授权集合
 ```
+Microsoft 365 Cross-Tenant Access Policy 扩展了上述 Entra Cross-Tenant Access Policy，将 Exchange 的日历忙闲等功能，纳入 Cross-tenant B2B 体系。[M365XTAP策略概述](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)
 
-Partner 中明确配置的属性优先；`null` 属性继承默认设置。因此，“创建了 Partner”不能被理解为“此 Partner 的所有访问都已允许”。同云普通 B2B Collaboration 的初始服务默认通常允许 inbound/outbound，B2B direct connect 初始默认阻止；这些是 Entra 服务默认，并非新 Microsoft 365 capabilities 的默认。[API 概览](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicy-overview?view=graph-rest-beta)、[Partner 类型](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicyconfigurationpartner?view=graph-rest-beta)。
+## 3. Microsoft 365 Cross-Tenant Access Policy
 
-## 3. 新的 Microsoft 365 Cross-Tenant Access Policy 增加了什么？
+### 3.1 先建立协作信任，再配置能力授权
 
-它把特定 Microsoft 365 数据的共享授权放到跨租户策略模型中，替代旧的组织共享配置路径。微软迁移指南说明，传统 OrgRel/Sharing Policy 使用 EWS，迁移涉及 EWS 依赖和高权限访问模式的现代化；AAS 的旧路径应单独判断，不能统称为 EWS 路径。[迁移指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)。
+Microsoft 365 Cross-Tenant Access Policy 通过两层设置管理跨组织访问：
 
-新模型需要把两层分开理解：
+**第一层是 `m365CollaborationInbound`**：与其他 Organization 建立 Microsoft 365 collaboration trust（Microsoft 365 协作信任），通过 `users` 数组，指定允许参与协作的**外部用户**。[协作信任前提](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta#microsoft-entra-cross-tenant-trust-prerequisite)
 
-1. **Entra 身份与协作信任层**：识别合作组织和允许参与 Microsoft 365 协作的外部用户。
-2. **Microsoft 365 capability 授权层**：决定对方能取得哪类数据，以及本租户哪些用户的资源可被访问。
+> 实际上文档中还写了 `appServiceConnectInbound` 建立应用连接信任，配合 `crossTenantMigration` capability， 专门给邮箱迁移用
 
-普通 B2B 的 `b2bCollaborationInbound` 之外，Partner 类型增加了 **`m365CollaborationInbound`**。Calendar Availability 所需的 Microsoft 365 collaboration trust 通过该设置或默认设置建立。没有有效 trust，即使 capability 对象创建成功，运行时也不生效。[Microsoft 365 API 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)。
+**第二层是 `m365Capabilities`**：在协作信任建立的基础上，具体允许或拒绝日历忙闲、日历共享、MailTips 等能力，并可限定访问邮箱的范围。[Capability 定义](https://learn.microsoft.com/en-us/graph/api/resources/m365capabilitybase?view=graph-rest-beta)
 
-### 3.1 架构图：管理配置与用户查询是两个过程
+这些设置由拥有资源的租户配置，且仅有 **inbound** 策略，双方可按需配置，决定向对方开放什么。[官方迁移流程](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#part-2--configure-your-new-microsoft-365-cross-tenant-access-policies)
 
-```mermaid
-flowchart TB
-    Admin["A 管理员"] -->|"Graph 管理请求"| Policy["A 的 crossTenantAccessPolicy"]
-    Policy --> Partner["partners / B 的 Tenant ID"]
-    Partner --> Trust["m365CollaborationInbound<br/>允许哪些 B 用户参与协作"]
-    Partner --> Cap["m365Capabilities<br/>crossTenantCalendarAvailabilityBasic"]
-    Cap --> Scope["inboundAccess<br/>isAllowed + A 的资源范围"]
-    Bob["B 的 Bob / Outlook"] --> Query["Microsoft 365 跨租户查询<br/>携带用户与组织上下文"]
-    Query --> Check["A 的信任和 capability 检查"]
-    Trust -.-> Check
-    Scope -.-> Check
-    Check -->|"通过检查"| Calendar["A 的 Alice 日历可用性"]
-    Calendar -->|"仅返回授权精度的忙闲信息"| Bob
-```
+### 3.2 两层怎样共同决定启用？
 
-这是根据官方公开策略语义绘制的**逻辑架构图**。官方文档未在这里公开全部内部 token exchange、服务端点及调用协议细节；图中的查询节点不代表某个可自行调用的公开 Graph endpoint。管理员的 Graph access token 用来配置策略，不是 Bob 查询 Alice 时使用的管理员令牌。
-
-### 3.2 `m365Capabilities` 是一个多态集合
-
-它属于 Default 或 Partner 的 relationship：
+以 A 的 `alice@a.com` 查看 B 的 `bob@b.com` 为例。在 B 的 Organizational settings 中为 Organization A 配置规则：`m365CollaborationInbound` 允许 Alice，日历 capability 的资源范围覆盖 Bob。
 
 ```text
-partners/{B Tenant ID}
-├── m365CollaborationInbound       身份协作信任
-└── m365Capabilities
-    └── crossTenantCalendarAvailabilityBasic
-        └── inboundAccess
-            ├── isAllowed
-            └── resourceScopes
-                ├── included
-                └── excluded
+partners/{A-Tenant-ID}
+├─ m365CollaborationInbound                   第一层：允许谁参与协作
+│  └─ users                                  A 的 Alice 或允许的外部用户范围
+└─ m365Capabilities                          第二层：开放什么资源能力
+   └─ crossTenantCalendarAvailabilityBasic   能力名称
+      └─ inboundAccess
+         ├─ isAllowed: true                  开放功能；false 表示禁止
+         └─ resourceScopes                   选择 B 的 Bob、Bob 所在组或全部用户
 ```
 
-集合可包含多种 capability。创建时必须提供 `@odata.type`，指定实际类型；后续更新 URL 用返回对象的 **`name`**，不是另外寻找一个随机 capability GUID。[创建 capability](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)、[更新 capability](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update-m365capabilities?view=graph-rest-beta)。
+**两层授权需要同时满足。** 微软明确说明：缺少有效 m365CollaborationInbound，capability 即使已创建，运行时也不会生效。M365 capabilities 的系统默认是禁用。
 
-### 3.3 Calendar Availability Basic 的边界
+### 3.3 上述例子的 Graph API 请求
 
-| 功能 | 对外信息 | 用途 |
-| --- | --- | --- |
-| `crossTenantCalendarAvailabilityBasic` | 基础 free/busy 与时间，不含会议详情 | 会议排程，本文配置目标 |
-| `crossTenantCalendarAvailabilityLimitedDetails` | free/busy、时间、主题、地点 | 需要更高可见性时另行批准 |
-| Calendar Sharing 系列 | 根据 simple/detail/reviewer 等档位共享日历 | 与忙闲查询分别配置 |
+下面在 B 租户中执行两个请求，实现上述日历忙闲查询：先允许 Organization A 的用户参与协作，再开放 Bob 所在组的基础忙闲。这里将请求者范围设为 A 的全部用户。
 
-打开 Basic 不等于允许读邮件、修改日历、读取会议正文，也不等于共享完整日历或建立匿名日历 URL。它是外部组织访问特定忙闲信息的策略授权。[Basic 定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantcalendaravailabilitybasic?view=graph-rest-beta)、[迁移映射表](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#part-2--configure-your-new-microsoft-365-cross-tenant-access-policies)。
+**1. 更新针对 Organization A 的 Partner 配置，建立协作信任，假设已有 B2B collaboration 配置**
 
-## 4. A/B 示例：Bob 怎样拿到 Alice 的忙闲？
-
-### 4.1 管理员预先配置
-
-A 管理员希望只向 B 开放 A 的“项目协作组”成员的基础忙闲：
-
-1. 在 **A** 创建以 **B Tenant ID** 为键的 Partner。
-2. 在这个 Partner 设置 `m365CollaborationInbound.users`，允许所选 B 用户参与协作。本文 HTTP 示例使用 `AllUsers`，表示 B 的全部用户；资源范围在下一层收窄。
-3. 在这个 Partner 创建 `crossTenantCalendarAvailabilityBasic`，设 `isAllowed: true`。
-4. 将 `resourceScopes.included` 设置为 **A 的项目协作组 Object ID**，`excluded` 为空。
-5. 若 Alice 是该组成员，她属于可共享资源范围；A 中不在该组的 Charlie 不属于该范围。
-
-这两处范围是不同的：trust 的 `users` 选的是**外部请求者**；capability 的 `resourceScopes` 选的是**本租户资源所有者**。不能把 B 的组 ID 填到 A 的资源范围中。[Inbound setting 定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicym365collaborationinboundsetting?view=graph-rest-beta)、[Microsoft 365 范围规则](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)。
-
-### 4.2 用户发起查询
-
-1. Bob 用 B 的身份进入支持此场景的 Outlook 会议排程界面。
-2. Bob 输入 Alice 的完整邮箱地址，请求查询某段时间的可用性。
-3. Microsoft 365 服务处理跨租户查询；A 识别请求者来自 B，并读取针对 B 的有效策略。
-4. A 检查 Microsoft 365 collaboration trust 是否允许该请求者。
-5. A 检查 Basic 是否允许，并判断 Alice 是否在 included 范围内、是否被 excluded 排除。
-6. 检查通过后，返回基础忙闲。例如 10:00–11:00 显示为忙；Bob 不应看到“董事会预算审议”这样的主题或会议地点。
-7. Bob 对 Charlie 的相同查询不应获得这条策略范围外的数据。
-
-上述是解释授权判断的逻辑过程，不保证实际服务内部按相同顺序逐项执行，也不保证客户端对拒绝情况采用某个固定错误文字。
-
-```mermaid
-sequenceDiagram
-    participant Bob as Bob（B）
-    participant Service as Microsoft 365 协作服务
-    participant PolicyA as A 的有效策略
-    participant CalA as Alice 的日历（A）
-    Bob->>Service: 排程查询 alice@contoso.example
-    Service->>PolicyA: 识别 B，检查协作信任和 capability
-    Note over PolicyA: m365CollaborationInbound 允许 Bob<br/>Basic=true<br/>Alice 在 A 的资源范围内
-    PolicyA-->>Service: 授权基础忙闲
-    Service->>CalA: 查询请求时间段的可用性
-    CalA-->>Service: 可用性结果
-    Service-->>Bob: 忙闲与时间，不含会议详情
+```http
+PATCH /beta/policies/crossTenantAccessPolicy/partners/{A-Tenant-ID}
+Content-Type: application/json
 ```
 
-### 4.3 双向共享怎样配置？
+```json
+{
+  "m365CollaborationInbound": {
+    "users": {
+      "accessType": "allowed",
+      "targets": [
+        { "target": "AllUsers", "targetType": "user" }
+      ]
+    }
+  }
+}
+```
 
-| 业务目标 | capability 配置位置 | Partner 的 Tenant ID | resourceScopes 所在租户 |
-| --- | --- | --- | --- |
-| B 查看 A 的日历 | A | B | A |
-| A 查看 B 的日历 | B | A | B |
-| A/B 双向查看 | 双方分别配置 | 各自填对方 ID | 各自的本地资源 |
+此请求修改 Graph API 中已存在的 Partner 配置；如果尚未创建，应先向 `/partners` 集合创建以 A Tenant ID 标识的配置。[Inbound 设置定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicym365collaborationinboundsetting?view=graph-rest-beta)、[更新 Partner 示例](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update?view=graph-rest-beta)
 
-Microsoft 365 capability 是 inbound-only；单向数据共享不要求 B 同时向 A 开放自己的日历。Partner 资源也有 `m365CollaborationOutbound.usersAndGroups`，用于来源租户控制其用户参与对外 Microsoft 365 协作；应检查实际有效设置，不应把它写成“反向日历授权”。官方迁移基线只要求资源租户建立 inbound trust 和 capability，并未要求为了单向共享而创建反向 capability。[Microsoft 365 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)、[Outbound setting 定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicym365collaborationoutboundsetting?view=graph-rest-beta)。
+**2. 向同一个 Partner 配置添加基础忙闲能力**
 
-### 4.4 是否必须先邀请 Guest？
+将 `resourceId` 替换为 B 租户中 Bob 所在组的 Object ID。
 
-普通 B2B 应用访问示例有 Guest 对象，不应把该流程机械搬到 Calendar Availability。官方日历迁移步骤是配置 Partner、Microsoft 365 collaboration trust 和 capability，**没有将逐人邀请 Guest 或启用跨租户同步列为该能力的前置条件**。因此本文不添加这些部署步骤，也不声称所有 Microsoft 365 跨租户能力都无需 Guest。
+```http
+POST /beta/policies/crossTenantAccessPolicy/partners/{A-Tenant-ID}/m365Capabilities
+Content-Type: application/json
+```
 
-忙闲查询通常可以从已知邮箱地址发起；人员能否自动出现在 GAL、能否通过姓名搜索，是另一项目录/客户端体验。Basic 本身不负责同步通讯录。不要用“找不到姓名”直接判断日历授权失败。[迁移指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)。
+```json
+{
+  "@odata.type": "#microsoft.graph.crossTenantCalendarAvailabilityBasic",
+  "inboundAccess": {
+    "isAllowed": true,
+    "resourceScopes": {
+      "included": [
+        {
+          "resourceId": "<id of a group that Bob is memberof>",
+          "resourceType": "group"
+        }
+      ],
+      "excluded": []
+    }
+  }
+}
+```
 
-## 5. 范围和默认策略的判断
+创建时用 `@odata.type` 选择能力；后续更新时用返回对象的 `name` 定位 capability。[创建 capability](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)
 
-Microsoft 365 capabilities 系统默认禁用。针对特定 Partner 的 capability 优先于默认 capability；default 是全局基线。本文只配置 Partner，以便限定合作组织。
+Basic 允许查询忙闲状态和时间，不返回会议详情。需要主题、地点时选择 `crossTenantCalendarAvailabilityLimitedDetails`。其余参考 [capability 列表](https://learn.microsoft.com/en-us/graph/api/resources/m365capabilitybase?view=graph-rest-beta)
 
-`resourceScopes` 遵循这些规则：
+## 4. 验证配置
 
-| included | excluded | 本租户有效资源范围 |
-| --- | --- | --- |
-| `resourceType: user, resourceId: All` | 空 | 全部用户 |
-| A 的项目组 | 空 | 项目组成员 |
-| 全部用户 | A 的保密组 | 排除保密组后的用户 |
-| A 的项目组 | Alice | 项目组成员中排除 Alice |
+功能部署到双方环境后，按以下步骤验证：
 
-**Exclude 优先于 include。** `All` 与 trust 目标中的 `AllUsers` 是不同字段的值，不能互换；`All` 配合 `resourceType` 使用。每次修改后都读回 default 与 Partner，避免只看一段 JSON 就推断全部有效访问。[Microsoft 365 API 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)。
+1. 与对方管理员约定测试时间，备份双方需要迁移的旧配置。
+2. 禁用对应的 Organization Relationship（OrgRel）和 Sharing Policy。
+3. Availability Address Space（AAS）无法临时禁用，需先导出备份，再移除对应配置，避免旧配置优先处理请求。
+4. 用 Outlook 验证范围内用户的忙闲是否可见、范围外用户是否按预期受限；需要双向共享时，双方分别测试。
+5. 若测试失败，重新启用旧策略，并从备份恢复 AAS。
 
-## 6. 21V 部署要单独判断的事项
+具体操作参考[官方测试与回滚步骤](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#part-3--test-functionality)。
 
-### 6.1 同云与跨云
+已确认 21V 环境尚未部署此功能，待功能部署后再迁移和验证；后续发布进度请关注 Exchange Team Blog：[Cross-tenant Free/Busy, MailTips, and Calendar Sharing are moving to Cross-Tenant Access Policy](https://techcommunity.microsoft.com/blog/exchange/cross-tenant-freebusy-mailtips-and-calendar-sharing-are-moving-to-cross-tenant-a/4545169)。
 
-先确认 B 所在云：
+## 5. 文档一些待验证事项
 
-- **A=21V，B=21V**：本文主例。使用 A 的中国云 Graph 和中国云身份端点进行管理。
-- **A=21V，B=全球商业云**：除 Partner 和 capability 外，还需检查双方 Microsoft cloud settings。Entra 官方文档要求跨云双方启用对方云，并以 Tenant ID 添加对方组织。第三篇提供相应 raw HTTP 附加步骤。
-- **A=21V，B=美国政府云**：不要套用全球商业云与中国云步骤；Entra 文档列出的跨云 B2B 配对是商业云↔政府云、商业云↔中国云，不能据此推断政府云↔中国云支持。
+相关文档仍有一些表述含混、衔接不足的地方；本文解释了配置模型，以下运行细节仍需微软补充说明或通过租户测试确认。
 
-新 Microsoft 365 API 概览描述同云与跨云支持，但具体云组合、功能 rollout 和用户端行为仍需验证。基础 Entra B2B 跨云支持不等于每个工作负载都已经开放。[跨云 Entra 配置](https://learn.microsoft.com/en-us/entra/external-id/cross-cloud-settings)、[Microsoft 365 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)。
+- **命名容易混淆。** Entra 文档主要使用 Cross-tenant access settings，Graph 使用 `crossTenantAccessPolicy`，新功能又称 Microsoft 365 Cross-Tenant Access Policy；同一组词跨越管理功能、API 资源和 M365 扩展，读者需要自行厘清各自指代。[Entra 概览](https://learn.microsoft.com/en-us/entra/external-id/cross-tenant-access-overview)、[M365 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)
 
-### 6.2 API 支持、版本、界面与 rollout
+- **Scope 的措辞存在出入。** 迁移指南说启用本组织全部用户的 collaboration trust，但 `m365CollaborationInbound.users` 的定义指向外部用户；指南还提到可缩小 trust scope，却未给出完整示例，容易与 capability 中的本地资源范围混淆。[迁移指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#check-your-entra-cross-tenant-access-policy-trust-relationship)、[Inbound 字段定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicym365collaborationinboundsetting?view=graph-rest-beta)
 
-| 问题 | 核查结论 |
-| --- | --- |
-| 21V 是否列入 API 支持？ | Partner 和 capability 的相关 beta 操作页明确标为支持 |
-| 现在是否能直接在管理中心配置新 capability？ | Microsoft 365 API 概览说 Graph/Graph PowerShell 可配置，Admin Center 支持计划在 GA 后提供；已有 Entra B2B 界面不等于新 capability 界面 |
-| 本文为什么用 beta？ | 按本次请求所给资源和版本编写，字段与请求以 beta API reference 为准 |
-| v1.0 在 21V 是否可直接替换？ | 本次核查“创建 capability”v1.0 页面将 21V 标为不支持，beta 页面则支持；即使 Basic 的 v1.0 资源说明已存在，也不能据此推断该操作在 21V 可用 |
-| 支持矩阵打勾是否表示当前租户已开放？ | 不保证；迁移指南明确提示 rollout 可能尚未到达某个租户 |
+- **与 B2B Collaboration 的运行依赖未说透。** `m365CollaborationInbound` 与 `b2bCollaborationInbound` 在配置模型中并列，迁移步骤也只配置前者；但示例未设置 B2B 可能仍继承默认允许，不能据此确认“显式阻止 B2B、只允许 M365”时的实际结果。[迁移步骤](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#check-your-entra-cross-tenant-access-policy-trust-relationship)
 
-Beta API 文档明确提示接口可能变化，生产应用使用不受支持。本文给出基于指定版本的技术分析和配置请求，实施时应确认组织接受的接口版本，并在变更前复核。全球云“不再必须使用 beta”的公告不应覆盖具体操作的中国云支持矩阵；也不要将 v1.0 的资源介绍与 v1.0 操作可用性混为一谈。[beta 创建 capability](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)、[v1.0 创建 capability](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-1.0)、[官方迁移指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)、[Exchange 团队公告](https://techcommunity.microsoft.com/blog/exchange/cross-tenant-freebusy-mailtips-and-calendar-sharing-are-moving-to-cross-tenant-a/4545169)。
+- **Outbound 的实际作用缺少衔接说明。** 概览将 M365 capability 描述为 inbound-only，日历迁移步骤也只配置资源侧入站授权；Graph 却同时提供 `m365CollaborationOutbound`，没有清楚解释它与这些日历场景的关系，以及设为 blocked 是否会阻止查询。[M365 概览](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta)、[Outbound 字段定义](https://learn.microsoft.com/en-us/graph/api/resources/crosstenantaccesspolicym365collaborationoutboundsetting?view=graph-rest-beta)
 
-### 6.3 旧策略优先，会造成“假阳性”验收
+- **邮箱迁移的信任前提存在歧义。** 概览先说所有 M365 capability 都需要 collaboration trust，随后又列出邮箱迁移需要 App service connect，却没有明确后者是额外前提还是例外路径；应用连接设置与 `crossTenantMigration` 的完整配合流程也缺少说明。[信任前提](https://learn.microsoft.com/en-us/graph/api/resources/m365-cross-tenant-access-policy-overview?view=graph-rest-beta#microsoft-entra-cross-tenant-trust-prerequisite)
 
-官方迁移指南明确说明现有 Organization Relationships、Availability Address Spaces、Sharing Policies 优先于新 Microsoft 365 策略。若原本 AAS 已工作，创建新 Basic 后 Outlook 仍能看到忙闲，**不能证明新策略生效**。应先备份并协调旧路径的停用/移除，再进行新路径测试；失败时恢复旧路径。
+- **配置方法已有，运行原理与排障依据仍不完整。** 已查阅的公开资料没有完整说明 Outlook 查询经过哪些服务、使用什么令牌、如何执行两层策略检查，以及如何确认请求实际走了新路径；配置保存成功、业务查询成功和新策略确实生效，仍需分别验证，仅凭现有指南难以定位所有失败原因。[官方配置与测试指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)
 
-AAS 不依赖 EWS，迁移指南明确说其 EXO 租户间共享不受 EWS 弃用影响。21V 的历史方案尤其可能使用 AAS，不应为了验证新策略直接删除唯一可用路径。[迁移指南测试与回滚部分](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap#part-3--test-functionality)。
+下一篇展开管理请求和验收步骤：[21V raw HTTP 配置](03-21v-http-guide.md)。其中采用 Bob 查看 Alice 的方向，资源租户为 A；按第 3.2 节交换双方角色即可。上一篇：[Exchange Online 如何跨租户共享日历忙闲](01-exchange-current.md)。
