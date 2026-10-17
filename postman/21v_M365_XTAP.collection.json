@@ -1,0 +1,217 @@
+{
+  "info": {
+    "name": "21v_M365_XTAP",
+    "description": "收集 21V 跨租户策略与日历忙闲相关 API，供用户按需选择请求、编辑内容并手动调用。\n\n### 准备应用\n在资源租户注册 Microsoft Entra ID public client，使用 Authorization Code with PKCE；在 Mobile and desktop applications 中注册 Environment 的回调地址，无需 Client Secret。\n\n### Microsoft Graph delegated permissions\n- `Policy.Read.All`\n- `Policy.ReadWrite.CrossTenantAccess`\n- `Policy.ReadWrite.CrossTenantCapability`\n\n以上权限需管理员同意。\n\n[Migration to Microsoft 365 Cross-Tenant Access Policy](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "oauth2",
+    "oauth2": [
+      {
+        "key": "tokenName",
+        "value": "21V Graph Delegated (Public Client PKCE)",
+        "type": "string"
+      },
+      {
+        "key": "grant_type",
+        "value": "authorization_code_with_pkce",
+        "type": "string"
+      },
+      {
+        "key": "redirect_uri",
+        "value": "{{oauth_callback_url}}",
+        "type": "string"
+      },
+      {
+        "key": "useBrowser",
+        "value": true,
+        "type": "boolean"
+      },
+      {
+        "key": "authUrl",
+        "value": "{{login_base_url}}/{{resource_tenant_id}}/oauth2/v2.0/authorize",
+        "type": "string"
+      },
+      {
+        "key": "accessTokenUrl",
+        "value": "{{login_base_url}}/{{resource_tenant_id}}/oauth2/v2.0/token",
+        "type": "string"
+      },
+      {
+        "key": "clientId",
+        "value": "{{client_id}}",
+        "type": "string"
+      },
+      {
+        "key": "scope",
+        "value": "{{delegated_scopes}}",
+        "type": "string"
+      },
+      {
+        "key": "client_authentication",
+        "value": "body",
+        "type": "string"
+      },
+      {
+        "key": "codeChallengeMethod",
+        "value": "S256",
+        "type": "string"
+      },
+      {
+        "key": "addTokenTo",
+        "value": "header",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "Read",
+      "description": "读取策略与 Microsoft 365 capabilities。",
+      "item": [
+        {
+          "name": "Get Default Policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/default",
+            "description": "读取默认跨租户访问策略。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-get?view=graph-rest-beta)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Partner Policy",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}",
+            "description": "读取指定合作租户的跨租户访问策略。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-get?view=graph-rest-beta)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Default Capabilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/default/m365Capabilities",
+            "description": "列出默认策略的 Microsoft 365 capabilities。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-list-m365capabilities?view=graph-rest-beta)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Partner Capabilities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities",
+            "description": "列出指定合作租户的 Microsoft 365 capabilities。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-list-m365capabilities?view=graph-rest-beta)"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Write",
+      "description": "创建或更新策略与日历 capability；按需选择请求并编辑 Body。",
+      "item": [
+        {
+          "name": "Create Partner Policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners",
+            "description": "为指定合作租户创建 Partner Policy。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicy-post-partners?view=graph-rest-beta)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"tenantId\": \"{{partner_tenant_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Partner Policy",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}",
+            "description": "配置指定合作租户的 Microsoft 365 入站协作信任。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update?view=graph-rest-beta)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"m365CollaborationInbound\": {\n    \"users\": {\n      \"accessType\": \"{{m365_inbound_access_type}}\",\n      \"targets\": [\n        {\n          \"target\": \"{{m365_inbound_target}}\",\n          \"targetType\": \"{{m365_inbound_target_type}}\"\n        }\n      ]\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Calendar Capability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities",
+            "description": "为指定合作租户创建基础日历忙闲授权。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"@odata.type\": \"#microsoft.graph.crossTenantCalendarAvailabilityBasic\",\n  \"inboundAccess\": {\n    \"isAllowed\": {{calendar_is_allowed}},\n    \"resourceScopes\": {\n      \"included\": [\n        {\n          \"resourceId\": \"{{resource_scope_id}}\",\n          \"resourceType\": \"{{resource_scope_type}}\"\n        }\n      ],\n      \"excluded\": []\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Calendar Capability",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities/{{capability_name}}",
+            "description": "更新指定合作租户的基础日历忙闲启用状态。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update-m365capabilities?view=graph-rest-beta)",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"inboundAccess\": {\n    \"isAllowed\": {{calendar_is_allowed}}\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

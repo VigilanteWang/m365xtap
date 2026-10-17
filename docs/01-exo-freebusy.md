@@ -219,4 +219,4 @@ EXO 继 OrgRel 和 AAS 后，也开始把相关共享配置迁移到 **Microsoft
 
 EXO 的 OrgRel 忙闲共享使用 EWS，属于当前迁移范围；AAS 的 `OrgWideFBToken` 可继续使用，并在新策略可用后评估迁移。实际部署需确认目标云的 API 版本与租户发布状态。[微软迁移指南](https://learn.microsoft.com/en-us/exchange/sharing/migrate-to-m365-xtap)
 
-下一篇从 Entra 管理员熟悉的身份策略出发，介绍这套新机制：[从 Entra B2B 到新日历忙闲策略](02-cross-tenant-architecture.md)。
+下一篇从 Entra 管理员熟悉的身份策略出发，介绍这套新机制：[从 Entra B2B 到新日历忙闲策略](02-m365-xtap.md)。

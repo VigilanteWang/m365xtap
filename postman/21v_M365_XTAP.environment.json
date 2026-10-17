@@ -1,0 +1,91 @@
+{
+  "name": "21v_M365_XTAP",
+  "values": [
+    {
+      "key": "graph_base_url",
+      "value": "https://microsoftgraph.chinacloudapi.cn",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "login_base_url",
+      "value": "https://login.chinacloudapi.cn",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "resource_tenant_id",
+      "value": "REPLACE_WITH_21V_RESOURCE_TENANT_GUID",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "partner_tenant_id",
+      "value": "REPLACE_WITH_PARTNER_TENANT_GUID",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "client_id",
+      "value": "REPLACE_WITH_21V_APP_CLIENT_ID",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "capability_name",
+      "value": "crossTenantCalendarAvailabilityBasic",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "calendar_is_allowed",
+      "value": "true",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "resource_scope_type",
+      "value": "user",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "resource_scope_id",
+      "value": "All",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "oauth_callback_url",
+      "value": "https://oauth.pstmn.io/v1/browser-callback",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "delegated_scopes",
+      "value": "https://microsoftgraph.chinacloudapi.cn/Policy.Read.All https://microsoftgraph.chinacloudapi.cn/Policy.ReadWrite.CrossTenantCapability https://microsoftgraph.chinacloudapi.cn/Policy.ReadWrite.CrossTenantAccess offline_access",
+      "enabled": true,
+      "type": "default"
+    },
+    {
+      "key": "m365_inbound_access_type",
+      "value": "allowed",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "m365_inbound_target",
+      "value": "AllUsers",
+      "type": "default",
+      "enabled": true
+    },
+    {
+      "key": "m365_inbound_target_type",
+      "value": "user",
+      "type": "default",
+      "enabled": true
+    }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_using": "ChatGPT"
+}
