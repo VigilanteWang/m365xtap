@@ -9,7 +9,7 @@
 在拥有待共享日历的 21V 租户中操作：
 
 1. 打开 [Azure Portal](https://portal.azure.cn)，进入 **Microsoft Entra ID → App registrations → New registration**。
-2. Name 填写 `Postman Calendar Basic`。
+2. Name 填写应用名，例如 `M365 Cross Tenant Access Policy`。
 3. Supported account types 选择 **Accounts in this organizational directory only**，点击 **Register**。
 4. 在 **Overview** 中记录 **Application (client) ID** 和 **Directory (tenant) ID**。
 5. 进入 **Authentication → Add a platform → Mobile and desktop applications**，添加 Custom redirect URI：`https://oauth.pstmn.io/v1/browser-callback`。
