@@ -75,7 +75,7 @@
             "method": "GET",
             "header": [],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/default",
-            "description": "读取默认跨租户访问策略。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-get?view=graph-rest-beta)"
+            "description": "读取默认跨租户访问策略。\n\n[Get crossTenantAccessPolicyConfigurationDefault](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-get?view=graph-rest-beta)"
           },
           "response": []
         },
@@ -85,7 +85,7 @@
             "method": "GET",
             "header": [],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}",
-            "description": "读取指定合作租户的跨租户访问策略。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-get?view=graph-rest-beta)"
+            "description": "读取指定合作租户的跨租户访问策略。\n\n[Get crossTenantAccessPolicyConfigurationPartner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-get?view=graph-rest-beta)"
           },
           "response": []
         },
@@ -95,7 +95,7 @@
             "method": "GET",
             "header": [],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/default/m365Capabilities",
-            "description": "列出默认策略的 Microsoft 365 capabilities。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-list-m365capabilities?view=graph-rest-beta)"
+            "description": "列出默认策略的 Microsoft 365 capabilities。\n\n[List Microsoft 365 capabilities for default policy](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationdefault-list-m365capabilities?view=graph-rest-beta)"
           },
           "response": []
         },
@@ -105,7 +105,7 @@
             "method": "GET",
             "header": [],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities",
-            "description": "列出指定合作租户的 Microsoft 365 capabilities。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-list-m365capabilities?view=graph-rest-beta)"
+            "description": "列出指定合作租户的 Microsoft 365 capabilities。\n\n[List Microsoft 365 capabilities for partner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-list-m365capabilities?view=graph-rest-beta)"
           },
           "response": []
         }
@@ -126,7 +126,7 @@
               }
             ],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners",
-            "description": "为指定合作租户创建 Partner Policy。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicy-post-partners?view=graph-rest-beta)",
+            "description": "为指定合作租户创建 Partner Policy。\n\n[Create crossTenantAccessPolicyConfigurationPartner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicy-post-partners?view=graph-rest-beta)",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"tenantId\": \"{{partner_tenant_id}}\"\n}",
@@ -150,7 +150,7 @@
               }
             ],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}",
-            "description": "配置指定合作租户的 Microsoft 365 入站协作信任。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update?view=graph-rest-beta)",
+            "description": "配置指定合作租户的 Microsoft 365 入站协作信任。\n\n[Update crossTenantAccessPolicyConfigurationPartner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update?view=graph-rest-beta)",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"m365CollaborationInbound\": {\n    \"users\": {\n      \"accessType\": \"{{m365_inbound_access_type}}\",\n      \"targets\": [\n        {\n          \"target\": \"{{m365_inbound_target}}\",\n          \"targetType\": \"{{m365_inbound_target_type}}\"\n        }\n      ]\n    }\n  }\n}",
@@ -174,7 +174,7 @@
               }
             ],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities",
-            "description": "为指定合作租户创建基础日历忙闲授权。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)",
+            "description": "为指定合作租户创建基础日历忙闲授权。\n\n[Create Microsoft 365 capability for partner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-post-m365capabilities?view=graph-rest-beta)",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"@odata.type\": \"#microsoft.graph.crossTenantCalendarAvailabilityBasic\",\n  \"inboundAccess\": {\n    \"isAllowed\": {{calendar_is_allowed}},\n    \"resourceScopes\": {\n      \"included\": [\n        {\n          \"resourceId\": \"{{resource_scope_id}}\",\n          \"resourceType\": \"{{resource_scope_type}}\"\n        }\n      ],\n      \"excluded\": []\n    }\n  }\n}",
@@ -198,7 +198,7 @@
               }
             ],
             "url": "{{graph_base_url}}/beta/policies/crossTenantAccessPolicy/partners/{{partner_tenant_id}}/m365Capabilities/{{capability_name}}",
-            "description": "更新指定合作租户的基础日历忙闲启用状态。\n\n[Microsoft Learn](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update-m365capabilities?view=graph-rest-beta)",
+            "description": "更新指定合作租户的基础日历忙闲启用状态。\n\n[Update Microsoft 365 capability for partner](https://learn.microsoft.com/en-us/graph/api/crosstenantaccesspolicyconfigurationpartner-update-m365capabilities?view=graph-rest-beta)",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"inboundAccess\": {\n    \"isAllowed\": {{calendar_is_allowed}}\n  }\n}",

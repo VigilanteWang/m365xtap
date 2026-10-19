@@ -15,19 +15,19 @@
     },
     {
       "key": "resource_tenant_id",
-      "value": "REPLACE_WITH_21V_RESOURCE_TENANT_GUID",
+      "value": "REMEMBER_TO_UNSHARE_BEFORE_ENTERING_THE_ID",
       "enabled": true,
       "type": "default"
     },
     {
       "key": "partner_tenant_id",
-      "value": "REPLACE_WITH_PARTNER_TENANT_GUID",
+      "value": "REMEMBER_TO_UNSHARE_BEFORE_ENTERING_THE_ID",
       "enabled": true,
       "type": "default"
     },
     {
       "key": "client_id",
-      "value": "REPLACE_WITH_21V_APP_CLIENT_ID",
+      "value": "REMEMBER_TO_UNSHARE_BEFORE_ENTERING_THE_ID",
       "enabled": true,
       "type": "default"
     },

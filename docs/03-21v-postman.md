@@ -53,6 +53,8 @@ Collection 包含两个文件夹：
 
 打开 **Environments → 21v_M365_XTAP**，填写以下变量（* 表示需要填写或调整）：
 
+填写 `resource_tenant_id`、`partner_tenant_id` 和 `client_id` 前，可先在各变量右侧的云朵菜单中选择 **Unshare**，再填写实际 ID，使这些值仅存在本地。
+
 | 变量 | 用途与填写内容 |
 | --- | --- |
 | `graph_base_url` | 中国云 Microsoft Graph API 的基础地址。 |
